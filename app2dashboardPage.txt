@@ -1,0 +1,66 @@
+ui <- dashboardPage(
+  dashboardHeader(title = "Stratified Sampling Calculator"),
+  
+  
+  dashboardSidebar(
+    sidebarMenu(
+      menuItem("Calculator", tabName = "calc", icon = icon("calculator")),
+      menuItem("Results", tabName = "res", icon = icon("chart-bar"))
+    )
+  ),
+  
+  
+  dashboardBody(
+    tabItems(
+      tabItem(tabName = "calc",
+              numericInput("strata", "Number of Subgroups", 3, min = 2),
+              numericInput("totalN", "Total Population Size", 1000),
+              numericInput("totaln", "Total Sample Size", 200),
+              actionButton("go", "Calculate")
+      ),
+      
+      
+      tabItem(tabName = "res",
+              DTOutput("table"),
+              plotOutput("plot")
+      )
+    )
+  )
+)
+
+
+server <- function(input, output) {
+  
+  
+  data <- eventReactive(input$go, {
+    strata <- input$strata
+    Nh <- round(rep(input$totalN / strata, strata))
+    Sh <- runif(strata, 5, 20) # variability (bias factor)
+    
+    
+    nh <- round(input$totaln * (Nh * Sh) / sum(Nh * Sh))
+    
+    
+    data.frame(
+      Stratum = paste("Group", 1:strata),
+      Population = Nh,
+      Std_Dev = round(Sh,2),
+      Sample_Size = nh
+    )
+  })
+  
+  
+  output$table <- renderDT({ data() })
+  
+  
+  output$plot <- renderPlot({
+    barplot(data()$Sample_Size,
+            names.arg = data()$Stratum,
+            main = "Sample Allocation Across Subgroups",
+            xlab = "Strata",
+            ylab = "Sample Size")
+  })
+}
+
+
+shinyApp(ui, server)
